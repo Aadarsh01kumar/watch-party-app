@@ -3,103 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <title>Watch Party</title>
-  <style>
-    body {
-      margin: 0;
-      background-color: #111;
-      color: white;
-      font-family: Arial, sans-serif;
-    }
-
-    h1 {
-      text-align: center;
-      padding: 10px;
-      background-color: #222;
-      margin: 0;
-    }
-
-    #container {
-      display: flex;
-      height: calc(100vh - 80px);
-    }
-
-    #video-section {
-      flex: 3;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      padding: 10px;
-    }
-
-    video, #player {
-      width: 100%;
-      max-height: 500px;
-      border-radius: 8px;
-      border: 2px solid #444;
-      margin-top: 10px;
-    }
-
-    #chat-section {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background-color: #222;
-      padding: 10px;
-      border-left: 2px solid #333;
-    }
-
-    #messages {
-      flex: 1;
-      overflow-y: auto;
-      background-color: #111;
-      padding: 10px;
-      margin-bottom: 10px;
-      border-radius: 8px;
-      border: 1px solid #333;
-    }
-
-    #msgInput, #ytInput, #modeSelect {
-      padding: 10px;
-      border: none;
-      border-radius: 4px;
-      outline: none;
-      width: 100%;
-      margin-top: 5px;
-    }
-
-    #msgInput:focus, #ytInput:focus {
-      border: 2px solid #666;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>🎬 Watch Party</h1>
-
   <div id="container">
     <div id="video-section">
-      <select id="modeSelect">
-        <option value="youtube">Watch YouTube</option>
-        <option value="local">Watch Downloaded Movie</option>
-      </select>
-
-      <input id="ytInput" placeholder="Paste YouTube link..." />
-
-      <div id="player"></div>
-      <video id="localVideo" controls hidden>
-        <source src="/movie" type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
+      <form id="video-form">
+        <input type="text" id="video-input" placeholder="Enter YouTube link or video file URL" />
+        <button type="submit">Load Video</button>
+      </form>
+      <div id="video-player"></div>
     </div>
 
     <div id="chat-section">
-      <div id="messages"></div>
-      <input id="msgInput" placeholder="Type your message..." />
+      <h2>Live Chat</h2>
+      <div id="chat-messages"></div>
+      <form id="chat-form">
+        <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off" />
+        <button type="submit">Send</button>
+      </form>
     </div>
   </div>
 
-  <script src="https://www.youtube.com/iframe_api"></script>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="client.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
