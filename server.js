@@ -1,37 +1,21 @@
 const express = require('express');
-const http = require('http');
-const socketio = require('socket.io');
-
+const path = require('path');
 const app = express();
-const server = http.createServer(app);
-const io = socketio(server);
+const http = require('http').Server(app);
+const io = require('socket.io')(http);
 
-app.use(express.static('public'));
+// Serve static files from the "public" directory
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/movie', (req, res) => {
-  res.sendFile(__dirname + '/movie.mp4');
+// For any route, serve index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-io.on('connection', (socket) => {
-  console.log('User connected');
+// Your socket.io logic...
+// io.on(...)
 
-  socket.on('chat message', (msg) => {
-    io.emit('chat message', msg);
-  });
-
-  socket.on('load video', (videoId) => {
-    socket.broadcast.emit('load video', videoId);
-  });
-
-  socket.on('video control', (data) => {
-    socket.broadcast.emit('video control', data);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected');
-  });
-});
-
-server.listen(process.env.PORT || 3000, () => {
-  console.log('Server running...');
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
