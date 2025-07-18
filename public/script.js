@@ -1,53 +1,91 @@
 const socket = io();
+let isHost = false;
+let player;
+let videoId = null;
 
-// Chat functionality
+socket.on('setHost', () => {
+  isHost = true;
+});
+
+socket.on('setVideo', (id) => {
+  videoId = id;
+  loadVideo(id);
+});
+
+socket.on('play', () => player?.playVideo());
+socket.on('pause', () => player?.pauseVideo());
+socket.on('seek', (time) => {
+  const current = player.getCurrentTime();
+  if (Math.abs(current - time) > 1.5) {
+    player.seekTo(time, true);
+  }
+});
+
+socket.on('chatMessage', (msg) => {
+  appendMessage(msg, 'received');
+});
+
+document.getElementById('video-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const url = document.getElementById('video-url').value;
+  const id = extractVideoId(url);
+  if (id && isHost) {
+    socket.emit('videoSelected', id);
+    loadVideo(id);
+  }
+});
+
+function extractVideoId(url) {
+  const match = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})(?:\?|&|$)/);
+  return match ? match[1] : null;
+}
+
+function loadVideo(id) {
+  if (player) {
+    player.loadVideoById(id);
+  } else {
+    player = new YT.Player('player', {
+      height: '360',
+      width: '640',
+      videoId: id,
+      events: {
+        onReady: () => {
+          if (isHost) {
+            setInterval(() => {
+              const time = player.getCurrentTime();
+              socket.emit('seek', time);
+            }, 1000);
+          }
+        },
+        onStateChange: (event) => {
+          if (!isHost) return;
+          if (event.data === YT.PlayerState.PLAYING) socket.emit('play');
+          if (event.data === YT.PlayerState.PAUSED) socket.emit('pause');
+        }
+      }
+    });
+  }
+}
+
+// Chat
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
-const chatMessages = document.getElementById('chat-messages');
+const chatBox = document.getElementById('chat-box');
 
-chatForm.addEventListener('submit', e => {
+chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const msg = chatInput.value.trim();
   if (msg) {
-    socket.emit('chat message', msg);
+    appendMessage(msg, 'sent');
+    socket.emit('chatMessage', msg);
     chatInput.value = '';
   }
 });
 
-socket.on('chat message', msg => {
-  const p = document.createElement('p');
-  p.textContent = msg;
-  chatMessages.appendChild(p);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-});
-
-// Video sync
-const videoForm = document.getElementById('video-form');
-const videoInput = document.getElementById('video-input');
-const videoPlayer = document.getElementById('video-player');
-
-videoForm.addEventListener('submit', e => {
-  e.preventDefault();
-  const link = videoInput.value.trim();
-  if (link) {
-    socket.emit('video link', link);
-    loadVideo(link);
-  }
-});
-
-socket.on('video link', link => {
-  loadVideo(link);
-});
-
-function loadVideo(link) {
-  let embed;
-  if (link.includes("youtube.com") || link.includes("youtu.be")) {
-    const videoId = link.includes("youtu.be")
-      ? link.split("/").pop()
-      : new URLSearchParams(new URL(link).search).get("v");
-    embed = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0" allowfullscreen></iframe>`;
-  } else {
-    embed = `<video controls autoplay><source src="${link}" type="video/mp4">Your browser does not support HTML5 video.</video>`;
-  }
-  videoPlayer.innerHTML = embed;
+function appendMessage(msg, type) {
+  const div = document.createElement('div');
+  div.className = `message ${type}`;
+  div.textContent = msg;
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
 }

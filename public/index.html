@@ -4,28 +4,28 @@
   <meta charset="UTF-8" />
   <title>Watch Party</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
-  <div id="container">
-    <div id="video-section">
+  <div class="container">
+    <div class="video-area">
+      <h2>🎬 Watch Party</h2>
       <form id="video-form">
-        <input type="text" id="video-input" placeholder="Enter YouTube link or video file URL" />
-        <button type="submit">Load Video</button>
+        <input type="text" id="video-url" placeholder="YouTube URL" />
+        <button>Load</button>
       </form>
-      <div id="video-player"></div>
+      <div id="player"></div>
     </div>
-
-    <div id="chat-section">
-      <h2>Live Chat</h2>
-      <div id="chat-messages"></div>
+    <div class="chat-area">
+      <h2>💬 Live Chat</h2>
+      <div id="chat-box"></div>
       <form id="chat-form">
-        <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off" />
-        <button type="submit">Send</button>
+        <input type="text" id="chat-input" placeholder="Type a message..." />
+        <button>Send</button>
       </form>
     </div>
   </div>
-
-  <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

@@ -1,35 +1,45 @@
 const express = require('express');
+const http = require('http');
+const socketIO = require('socket.io');
 const path = require('path');
-const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
 
-// Serve static files from public folder
+const app = express();
+const server = http.createServer(app);
+const io = socketIO(server);
+
+let hostId = null;
+let currentVideoId = null;
+
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Root route
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Socket.io logic
 io.on('connection', socket => {
-  console.log('A user connected');
+  console.log('User connected:', socket.id);
 
-  socket.on('chat message', msg => {
-    io.emit('chat message', msg);
+  if (!hostId) {
+    hostId = socket.id;
+    socket.emit('setHost');
+  }
+
+  if (currentVideoId) {
+    socket.emit('setVideo', currentVideoId);
+  }
+
+  socket.on('videoSelected', (videoId) => {
+    currentVideoId = videoId;
+    io.emit('setVideo', videoId);
   });
 
-  socket.on('video link', link => {
-    socket.broadcast.emit('video link', link);
-  });
+  socket.on('play', () => socket.broadcast.emit('play'));
+  socket.on('pause', () => socket.broadcast.emit('pause'));
+  socket.on('seek', (time) => socket.broadcast.emit('seek', time));
+  socket.on('chatMessage', (msg) => socket.broadcast.emit('chatMessage', msg));
 
   socket.on('disconnect', () => {
-    console.log('A user disconnected');
+    if (socket.id === hostId) hostId = null;
   });
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
