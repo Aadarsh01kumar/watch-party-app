@@ -1,31 +1,36 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Watch Party</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="https://www.youtube.com/iframe_api"></script>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
-    <div class="video-area">
-      <h2>🎬 Watch Party</h2>
-      <form id="video-form">
-        <input type="text" id="video-url" placeholder="YouTube URL" />
-        <button>Load</button>
-      </form>
+    <div class="video-container">
+      <h2>🎬 Movie Player</h2>
       <div id="player"></div>
+      <input type="text" id="youtubeUrl" placeholder="Paste YouTube URL">
+      <button id="loadVideo">Load Video</button>
     </div>
-    <div class="chat-area">
+
+    <div class="chat-container">
       <h2>💬 Live Chat</h2>
-      <div id="chat-box"></div>
-      <form id="chat-form">
-        <input type="text" id="chat-input" placeholder="Type a message..." />
-        <button>Send</button>
-      </form>
+      <div id="messages"></div>
+      <input id="messageInput" placeholder="Type a message..." />
+      <button id="sendBtn">Send</button>
     </div>
   </div>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    // Required global for YouTube API
+    var player;
+    function onYouTubeIframeAPIReady() {
+      window.dispatchEvent(new Event("YTReady"));
+    }
+  </script>
+  <script src="https://www.youtube.com/iframe_api"></script>
   <script src="script.js"></script>
 </body>
 </html>

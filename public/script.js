@@ -1,91 +1,120 @@
 const socket = io();
 let isHost = false;
-let player;
 let videoId = null;
+let ready = false;
 
-socket.on('setHost', () => {
+// Join the room
+socket.emit("join");
+
+// Set host
+socket.on("setHost", () => {
   isHost = true;
 });
 
-socket.on('setVideo', (id) => {
-  videoId = id;
-  loadVideo(id);
-});
-
-socket.on('play', () => player?.playVideo());
-socket.on('pause', () => player?.pauseVideo());
-socket.on('seek', (time) => {
-  const current = player.getCurrentTime();
-  if (Math.abs(current - time) > 1.5) {
-    player.seekTo(time, true);
+// Chat functionality
+document.getElementById("sendBtn").onclick = () => {
+  const msg = document.getElementById("messageInput").value;
+  if (msg.trim()) {
+    socket.emit("chat", msg);
+    addMessage(msg, true);
+    document.getElementById("messageInput").value = "";
   }
+};
+
+socket.on("chat", (msg) => {
+  addMessage(msg, false);
 });
 
-socket.on('chatMessage', (msg) => {
-  appendMessage(msg, 'received');
-});
+function addMessage(msg, isSent) {
+  const msgDiv = document.createElement("div");
+  msgDiv.classList.add("message", isSent ? "sent" : "received");
+  msgDiv.textContent = msg;
+  document.getElementById("messages").appendChild(msgDiv);
+}
 
-document.getElementById('video-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const url = document.getElementById('video-url').value;
+// Load video
+document.getElementById("loadVideo").onclick = () => {
+  if (!isHost) {
+    alert("Only host can load video.");
+    return;
+  }
+  const url = document.getElementById("youtubeUrl").value;
   const id = extractVideoId(url);
-  if (id && isHost) {
-    socket.emit('videoSelected', id);
-    loadVideo(id);
+  if (id) {
+    videoId = id;
+    socket.emit("loadVideo", videoId);
+    loadPlayer(videoId);
   }
-});
+};
 
+// Extract YouTube ID
 function extractVideoId(url) {
-  const match = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})(?:\?|&|$)/);
+  const regExp = /(?:youtube\.com\/.*v=|youtu\.be\/)([^&\n?#]+)/;
+  const match = url.match(regExp);
   return match ? match[1] : null;
 }
 
-function loadVideo(id) {
+// Load player when API is ready
+window.addEventListener("YTReady", () => {
+  ready = true;
+});
+
+// Load video on other clients
+socket.on("loadVideo", (id) => {
+  videoId = id;
+  if (ready) {
+    loadPlayer(id);
+  } else {
+    window.addEventListener("YTReady", () => loadPlayer(id));
+  }
+});
+
+// Create or update player
+function loadPlayer(id) {
   if (player) {
     player.loadVideoById(id);
   } else {
-    player = new YT.Player('player', {
-      height: '360',
-      width: '640',
+    player = new YT.Player("player", {
+      height: "360",
+      width: "640",
       videoId: id,
       events: {
         onReady: () => {
-          if (isHost) {
-            setInterval(() => {
-              const time = player.getCurrentTime();
-              socket.emit('seek', time);
-            }, 1000);
-          }
+          if (!isHost) socket.emit("requestSync");
         },
-        onStateChange: (event) => {
+        onStateChange: (e) => {
           if (!isHost) return;
-          if (event.data === YT.PlayerState.PLAYING) socket.emit('play');
-          if (event.data === YT.PlayerState.PAUSED) socket.emit('pause');
+          const time = player.getCurrentTime();
+          if (e.data === YT.PlayerState.PLAYING) {
+            socket.emit("play", time);
+          } else if (e.data === YT.PlayerState.PAUSED) {
+            socket.emit("pause", time);
+          }
         }
       }
     });
   }
 }
 
-// Chat
-const chatForm = document.getElementById('chat-form');
-const chatInput = document.getElementById('chat-input');
-const chatBox = document.getElementById('chat-box');
-
-chatForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const msg = chatInput.value.trim();
-  if (msg) {
-    appendMessage(msg, 'sent');
-    socket.emit('chatMessage', msg);
-    chatInput.value = '';
+// Playback sync
+socket.on("play", (time) => {
+  if (player) {
+    player.seekTo(time, true);
+    player.playVideo();
   }
 });
 
-function appendMessage(msg, type) {
-  const div = document.createElement('div');
-  div.className = `message ${type}`;
-  div.textContent = msg;
-  chatBox.appendChild(div);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
+socket.on("pause", (time) => {
+  if (player) {
+    player.seekTo(time, true);
+    player.pauseVideo();
+  }
+});
+
+socket.on("sync", (data) => {
+  if (player) {
+    player.loadVideoById(data.videoId);
+    player.seekTo(data.time, true);
+    if (data.isPlaying) player.playVideo();
+  }
+});

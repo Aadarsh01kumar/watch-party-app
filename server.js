@@ -1,45 +1,60 @@
-const express = require('express');
-const http = require('http');
-const socketIO = require('socket.io');
-const path = require('path');
-
+const express = require("express");
 const app = express();
-const server = http.createServer(app);
-const io = socketIO(server);
+const http = require("http").createServer(app);
+const io = require("socket.io")(http);
+const path = require("path");
 
 let hostId = null;
-let currentVideoId = null;
+let videoId = null;
+let currentTime = 0;
+let isPlaying = false;
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, "public")));
 
-io.on('connection', socket => {
-  console.log('User connected:', socket.id);
+io.on("connection", (socket) => {
+  console.log("User connected:", socket.id);
 
   if (!hostId) {
     hostId = socket.id;
-    socket.emit('setHost');
+    socket.emit("setHost");
   }
 
-  if (currentVideoId) {
-    socket.emit('setVideo', currentVideoId);
-  }
-
-  socket.on('videoSelected', (videoId) => {
-    currentVideoId = videoId;
-    io.emit('setVideo', videoId);
+  socket.on("join", () => {
+    if (socket.id === hostId) socket.emit("setHost");
   });
 
-  socket.on('play', () => socket.broadcast.emit('play'));
-  socket.on('pause', () => socket.broadcast.emit('pause'));
-  socket.on('seek', (time) => socket.broadcast.emit('seek', time));
-  socket.on('chatMessage', (msg) => socket.broadcast.emit('chatMessage', msg));
+  socket.on("loadVideo", (id) => {
+    videoId = id;
+    currentTime = 0;
+    isPlaying = false;
+    io.emit("loadVideo", videoId);
+  });
 
-  socket.on('disconnect', () => {
-    if (socket.id === hostId) hostId = null;
+  socket.on("play", (time) => {
+    currentTime = time;
+    isPlaying = true;
+    io.emit("play", time);
+  });
+
+  socket.on("pause", (time) => {
+    currentTime = time;
+    isPlaying = false;
+    io.emit("pause", time);
+  });
+
+  socket.on("requestSync", () => {
+    socket.emit("sync", {
+      videoId,
+      time: currentTime,
+      isPlaying,
+    });
+  });
+
+  socket.on("chat", (msg) => {
+    socket.broadcast.emit("chat", msg);
   });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+http.listen(process.env.PORT || 3000, () => {
+  console.log("Server running on port 3000");
 });
